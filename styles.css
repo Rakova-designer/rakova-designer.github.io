@@ -1,0 +1,1378 @@
+/* =========================================================================
+   Портфолио — Надежда Ракова
+   Макет: Figma «portfolio» / секция 1920 (node 339-138)
+
+   Единица масштаба: 1rem = 100px при ширине окна 1920px.
+   Все размеры из макета переводятся как px / 100 (472px -> 4.72rem),
+   поэтому вся страница пропорционально масштабируется под ширину экрана.
+   Точное значение выставляет script.js (по clientWidth, без скроллбара),
+   значение ниже — запасное на случай отключённого JS.
+   ========================================================================= */
+
+:root {
+  /* токены Figma */
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --accent: #14758b;              /* заголовки разделов */
+  --accent-light: #7bdce4;        /* обводка и свечение бейджа */
+  --sidebar-bg: rgba(20, 117, 139, 0.4);
+  --bg: #060606;                  /* подложка страницы и вырез под заголовок */
+  --radius-sm: 0.2rem;            /* 20px — мелкое скругление (skip-link) */
+  --radius: 0.4rem;               /* 40px — скругление карточек и сцены */
+
+  --stage-fill: url("assets/stage-dark.svg");
+}
+
+html {
+  font-size: calc(100vw / 19.2);
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Montserrat", "Segoe UI", Arial, sans-serif;
+  font-weight: 300;
+  font-size: 0.2rem;
+  line-height: 0.28rem;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img { display: block; max-width: 100%; }
+p { margin: 0; }
+h1, h2, h3 { margin: 0; font-weight: inherit; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+a { color: inherit; text-decoration: none; }
+
+/* Тап по интерактивным элементам не подсвечивается системным синим
+   прямоугольником (Android, iOS). Обводки :focus-visible это не касается —
+   она остаётся для клавиатуры. Полоски бургера заодно не выделяются
+   как текст при долгом нажатии. */
+.sidebar__toggle,
+.nav__item {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sidebar__toggle {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.12rem 0.2rem;
+  background: var(--accent);
+  border-radius: 0 0 var(--radius-sm) 0;
+}
+.skip-link:focus { left: 0; }
+
+/* ============================== Сайдбар ============================== */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 20;
+  width: 3.16rem;
+  height: 100vh;
+  padding: 0 0.32rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--sidebar-bg);
+  -webkit-backdrop-filter: blur(0.2rem);
+  backdrop-filter: blur(0.2rem);
+}
+
+.sidebar__toggle { display: none; }
+
+/* Знак показывается только в мобильной шапке: на широком экране сайдбар и так
+   подписан полными названиями разделов, и знак там лишний. Стили — в блоке
+   адаптива ниже. */
+.sidebar__logo { display: none; }
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  /* Sidebar / 1920 (391:89): 48 — с десятью пунктами прежние 64 не влезали по высоте */
+  gap: 0.48rem;
+  align-items: flex-start;
+}
+
+/* Nav item / 1920 (Figma 391:80). Состояния из компонента:
+   Default — Unbounded Regular 16/28, белый
+   Hover   — Unbounded Medium 16/28, белый
+   Active  — Unbounded ExtraBold 20/28, белый
+   Disabled — Unbounded Regular 16/28, rgba(255,255,255,0.4) */
+.nav__item {
+  font-family: "Unbounded", "Segoe UI", Arial, sans-serif;
+  font-weight: 400;
+  font-size: 0.16rem;
+  line-height: 0.28rem;
+  color: var(--text);
+  /* pre-line — чтобы работал перенос из подписи («презентация
+oillink»),
+     как в макете; сами строки не переносятся, пункты короткие */
+  white-space: pre-line;
+  transition: font-weight 0.2s ease;
+}
+
+.nav__item:hover,
+.nav__item:focus-visible { font-weight: 500; }
+
+/* Варианта Focused в компоненте нет — рамка добавлена для клавиатуры */
+.nav__item:focus-visible {
+  outline: 0.02rem solid var(--accent-light);
+  outline-offset: 0.06rem;
+  border-radius: 0.02rem;
+}
+
+.nav__item.is-active {
+  font-weight: 800;
+  font-size: 0.2rem;
+  color: var(--text);
+}
+
+/* ============================== Страница ============================== */
+
+.page {
+  padding: 0.4rem 0.32rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.64rem;
+  scroll-margin-top: 0.4rem;
+}
+
+/* ------------------------------- Сцена ------------------------------- */
+
+/* Подложка сцены начинается не от края страницы, а справа от сайдбара —
+   с тем же отступом 3.15rem, что у .row--inset (по макету photobank — 1921):
+   блоки больше не заходят под меню. Поэтому подложку рисует псевдоэлемент
+   со своим скруглением, а слева под вырезом остаётся фон страницы. */
+.stage {
+  position: relative;
+  height: max(8.53rem, calc(100vh - 0.8rem));
+}
+
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 3.15rem;
+  border-radius: var(--radius);
+  background-image: var(--stage-fill);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.stage--teal { --stage-fill: url("assets/stage-teal.svg"); }
+
+/* Сцена с фоновым видео («ТВ-ассистент»): вместо подложки — ролик в той же рамке */
+.stage--media::before { display: none; }
+
+.stage__media {
+  position: absolute;
+  inset: 0 0 0 3.15rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  /* кадр-заглушка (задан в разметке) — кадрируется так же, как видео */
+  background-size: cover;
+  background-position: center;
+}
+
+.stage__media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Вырез в левом верхнем углу сцены — под заголовок раздела */
+.stage__notch {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9.44rem;
+  height: 1.64rem;
+  background: var(--bg);
+  border-bottom-right-radius: var(--radius);
+}
+
+/* Два вогнутых уголка выреза. По контуру Subtract панель скругляется
+   радиусом 40 в двух местах: сверху — от (984, 0) к (944, 40),
+   слева — от (0, 204) к (40, 164). Оба уголка дорисовывают фон
+   вокруг дуги: центр окружности в правом нижнем углу псевдоэлемента. */
+.stage__notch::before,
+.stage__notch::after {
+  content: "";
+  position: absolute;
+  width: var(--radius);
+  height: var(--radius);
+  background: radial-gradient(circle at 100% 100%,
+              transparent calc(var(--radius) - 0.5px),
+              var(--bg) var(--radius));
+}
+
+/* угол панели под вырезом — у левого края подложки (3.15rem), а не сцены */
+.stage__notch::before { left: 3.15rem; top: 100%; }
+.stage__notch::after  { left: 100%; top: 0; }   /* угол панели в (984, 0) */
+
+.stage__content {
+  position: absolute;
+  inset: 0;
+  padding: 0.48rem 1.57rem 0.27rem 4.72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stage__content--clip { overflow: hidden; }
+
+/* «Спикер пак»: мокап прижат к нижней грани сцены — в макете фрейм с визуалом
+   кончается ровно на её краю, без нижнего отступа (614,67 против 588 у прочих
+   экранов). Сцена на сайте тянется на высоту окна, поэтому тело растягивается
+   до низа, а не остаётся фиксированной высоты. */
+.stage__content--flush { padding-bottom: 0; }
+
+.stage__content--flush .stage__body {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 6.15rem;
+}
+
+.stage__head {
+  display: flex;
+  align-items: center;
+  gap: 2.12rem;
+  flex-shrink: 0;
+}
+
+.stage__title {
+  width: 4.17rem;
+  height: 1.16rem;
+  display: flex;
+  align-items: center;
+  font-family: "Unbounded", "Segoe UI", Arial, sans-serif;
+  font-weight: 900;
+  font-size: 0.32rem;
+  line-height: 0.32rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.stage__title--tall { line-height: 0.4rem; }
+
+.badge {
+  flex-shrink: 0;
+  width: 5.97rem;
+  height: 0.91rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.27rem 0.48rem;
+  border: 0.04rem solid var(--accent-light);
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0.4rem 0 var(--accent-light);
+  font-weight: 500;
+  font-size: 0.2rem;
+  line-height: 0.2rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.stage__body {
+  display: flex;
+  gap: 0.32rem;
+  height: var(--body-h, 6.15rem);
+  width: 13.84rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.stage__body--clip { overflow: hidden; }
+
+/* ------------------------- Колонки и текстовые блоки ------------------------- */
+
+.col-text {
+  width: var(--col-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+/* На сцене с фото-фоном у бейджа своя стеклянная подложка (по макету Maree,
+   node 652:1353): без неё он теряется на светлых участках кадра */
+.stage--media .badge {
+  background: rgba(20, 92, 117, 0.5);
+  -webkit-backdrop-filter: blur(0.05rem);
+  backdrop-filter: blur(0.05rem);
+}
+
+.col-visual {
+  width: var(--col-w);
+  flex-shrink: 0;
+}
+
+.col-visual--center { display: flex; justify-content: center; }
+
+.block {
+  width: var(--block-w, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: flex-start;
+}
+
+.label {
+  font-family: "Unbounded", "Segoe UI", Arial, sans-serif;
+  font-weight: 500;
+  font-size: 0.2rem;
+  line-height: 0.28rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.strong { font-weight: 500; }
+
+/* Стиль Body / Loose убран из системы — везде Body / Regular. Поэтому
+   у .lead и .bullets--loose своего интерлиньяжа больше нет, оба наследуют
+   28 от body. Сами классы в разметке оставлены: на вёрстку они не влияют. */
+
+.bullets { list-style: disc; padding-left: 0.3rem; }
+
+/* --------------------------- Цветовая палитра --------------------------- */
+
+.palette { display: flex; gap: 0.32rem; align-items: center; }
+
+.swatch {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.swatch--outlined { box-shadow: inset 0 0 0 0.01rem #ffffff; }
+
+/* ------------------------------ Хард скилы ------------------------------ */
+
+.skills { display: flex; gap: 0.32rem; align-items: center; }
+
+.skill {
+  position: relative;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  /* Свечение в тон иконки: --glow приходит из index.astro, у каждой свой.
+     Смещения нулевые — ореол ровно по кругу. overflow: hidden обрезает
+     только содержимое, наружную тень он не трогает. */
+  box-shadow: 0 0 0.2rem var(--glow);
+}
+
+/* Размеры «листа» внутри маски повторяют макет: маска 48x48,
+   само изображение чуть больше и смещено. */
+.skill__leaf {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0.48rem;
+  height: 0.48rem;
+  object-fit: cover;
+}
+
+.skill__leaf--ae  { width: 0.49rem; left: -0.01rem; }
+.skill__leaf--sq  { width: 0.49rem; height: 0.49rem; left: -0.01rem; top: -0.01rem; }
+.skill__leaf--big { width: 0.51rem;   height: 0.51rem;   left: -0.02rem;   top: -0.02rem; overflow: hidden; }
+
+.skill__inner { position: absolute; max-width: none; }
+.skill__inner--rive  { width: 774.13%; height: 436.88%; left: -245.03%; top: -167.23%; }
+.skill__inner--figma { width: 165.62%; height: 137.26%; left: -31.25%;  top: -17.07%; }
+
+/* ------------------------------- Фото ------------------------------- */
+
+.photo { position: relative; width: 5.98rem; height: 5.4rem; }
+
+.photo__frame {
+  position: absolute;
+  inset: 0;
+  /* ?v= — новый адрес для файла, заменённого под тем же именем: прежняя версия
+     могла остаться в кеше браузера. Меняйте число при каждой замене файла. */
+  -webkit-mask: url("assets/about/photo-mask.svg?v=4") no-repeat center / 100% 100%;
+  mask: url("assets/about/photo-mask.svg?v=4") no-repeat center / 100% 100%;
+}
+
+.photo__img {
+  position: absolute;
+  left: -0.04rem;
+  top: -0.27rem;
+  width: 6.21rem;
+  height: 6.21rem;
+  max-width: none;
+  object-fit: cover;
+}
+
+/* Подсказка в вырезе фото: круг 162 с подписью и стрелкой вниз — показывает,
+   что ниже лежит шоурил. Доли из макета: круг 162/598 по ширине фото, а всё
+   внутри — в процентах от самого круга, поэтому он масштабируется целиком,
+   и на узком экране меняется только кегль подписи. */
+.photo__hint {
+  position: absolute;
+  left: 77.59%;  /* 464 / 598 */
+  top: 68.7%;    /* 371 / 540 */
+  width: 27.09%; /* 162 / 598 */
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 0.03rem solid var(--accent-light);
+  border-radius: 50%;
+  text-align: center;
+}
+
+.photo__hint-text {
+  width: 61.11%;      /* 99 / 162 */
+  margin-top: 24.69%; /* отступ сверху 40 */
+  font-weight: 500;
+  font-size: 0.2rem;
+  line-height: 0.2rem;
+}
+
+.photo__hint-arrow {
+  width: 12.96%;      /* 21 / 162 */
+  margin-top: 14.81%; /* зазор до подписи 24 */
+  color: var(--text);
+}
+
+/* Круг — ссылка на шоурил, поэтому у него есть отклик на наведение и фокус */
+.photo__hint {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo__hint:hover,
+.photo__hint:focus-visible {
+  box-shadow: 0 0 0.3rem 0 var(--accent-light);
+  transform: scale(1.04);
+}
+
+.photo__hint:focus-visible { outline: 0.02rem solid var(--text); outline-offset: 0.04rem; }
+
+/* якорь перехода: карточка не прилипает к верхней грани окна */
+#showreel { scroll-margin-top: 0.4rem; }
+
+/* ============================== Ряды и карточки ============================== */
+
+.row {
+  display: flex;
+  gap: 0.32rem;
+  align-items: stretch;
+}
+
+/* Ряд, выровненный по правому краю — отступ на ширину сайдбара */
+.row--inset { padding-left: 3.15rem; }
+
+.panel {
+  width: var(--panel-w, auto);
+  flex-shrink: 0;
+  padding: 0.68rem 0.32rem 0.68rem 4.72rem;
+  border-radius: var(--radius);
+  background-image: url("assets/panel.svg?v=2");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.panel--gap { gap: 0.4rem; }
+/* Широкая панель начинается справа от сайдбара (отступ 3.15rem, как у
+   .row--inset), а текст стоит на той же линии, что у остальных:
+   4.72 − 3.15 = 1.57rem. */
+.panel--full { width: auto; margin-left: 3.15rem; padding-left: 1.57rem; gap: 0.4rem; }
+
+/* Текстовая колонка рядом с визуалом — без подложки, прямо на фоне страницы.
+   Отступы остаются: текст стоит на той же линии, что в остальных блоках. */
+.panel--plain { background: none; }
+
+/* Текстовая колонка панели — 408 px, как в компонентах Panel / … в макете:
+   472 (отступ слева, по линии сцены) + 408 + 32 = 912, ровно половина ряда. */
+.panel > .block { width: 4.08rem; }
+
+/* Паттерн-подложка. Сейчас не используется: в макете панель «айдентика» —
+   инстанс Panel / 2 columns, у него подложки нет. Оставлено на случай возврата. */
+.panel--patterned { position: relative; overflow: hidden; }
+
+.panel--patterned::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("assets/zaryad/pattern.png") center / cover no-repeat;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.panel--patterned > * { position: relative; }
+
+/* Две колонки по 408 с зазором 221 — компонент Panel / 2 columns */
+.cols-2 { display: flex; gap: 2.21rem; align-items: flex-start; }
+.cols-2 > .col {
+  width: 4.08rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.media {
+  margin: 0;
+  width: var(--media-w, 100%);
+  height: var(--media-h, auto);
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #d9d9d9;
+}
+
+/* Тянется на высоту ряда. Картинка выведена из потока, чтобы высоту ряда
+   задавала панель с текстом (как в макете), а не пропорции изображения. */
+.media--stretch { height: auto; align-self: stretch; position: relative; }
+.media--stretch img { position: absolute; inset: 0; }
+
+/* Картинка добирает остаток ряда: 1856 - 912 (панель) - 32 (зазор) = 912 */
+.media--fill { flex: 1 0 0; width: auto; min-width: 0; }
+
+.media--panel {
+  background-image: url("assets/panel.svg?v=2");
+  background-size: 100% 100%;
+}
+
+.media img,
+.media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* У видеокарточки нет светлой подложки. Видео браузер рисует отдельным слоем
+   и выравнивает по пикселям экрана, а скруглённая рамка карточки стоит на
+   дробных координатах (масштаб в rem) — между ними остаётся щель меньше
+   пикселя. С подложкой #d9d9d9 она проступала светлой каймой, особенно при
+   прокрутке. Без подложки в щели виден тёмный фон страницы, и край сливается.
+   Скругление дублируется на самом видео, чтобы его слой обрезался той же дугой. */
+.media--video { background: transparent; }
+.media--video video { border-radius: inherit; }
+
+/* Карточка-плеер (EmbedPlayer): обложка-кнопка, по нажатию её место занимает
+   iframe видеосервиса. Оба слоя растянуты по карточке абсолютно — так они
+   заполняют её и на десктопе (высота задана), и на мобилке (высота из
+   aspect-ratio ниже). */
+.media--embed { position: relative; }
+
+.embed__cover,
+.media--embed iframe {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.embed__cover {
+  padding: 0;
+  background: none;
+  border-radius: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* селектор длиннее обычного .media img — иначе на мобилке его перебил бы height: auto */
+.media--embed .embed__cover img { height: 100%; transition: filter 0.3s ease; }
+.embed__cover:hover img { filter: brightness(1.12); }
+
+/* Значок «плей» по центру обложки. Оформление как у стрелок карусели:
+   подложка и размытие от меню, обводка цветом бейджа. */
+.embed__play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: 0.02rem solid var(--accent-light);
+  border-radius: 50%;
+  background: var(--sidebar-bg);
+  -webkit-backdrop-filter: blur(0.05rem);
+  backdrop-filter: blur(0.05rem);
+  color: var(--text);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.embed__play svg { width: 40%; height: 40%; fill: currentColor; }
+
+.embed__cover:hover .embed__play,
+.embed__cover:focus-visible .embed__play {
+  box-shadow: 0 0 0.3rem 0 var(--accent-light);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.embed__cover:focus-visible {
+  outline: 0.04rem solid var(--accent-light);
+  outline-offset: -0.04rem;
+}
+
+.grid { display: flex; flex-wrap: wrap; gap: 0.32rem; align-content: flex-start; }
+
+/* ------------------------------- Карусель ------------------------------- */
+
+/* Окно карусели — от линии справа от сайдбара до правого края окна (правое
+   поле .page вычитается отрицательным отступом). Карточки листаются по одной и встают по центру экрана, поэтому в
+   покое средняя карточка по центру, а соседние свисают за края — как лента в
+   макете «Auto». Поля 0.6rem сверху и снизу тоже из макета. */
+.carousel {
+  --card-w: 7rem;
+  --card-gap: 0.32rem;
+  --arrow: 0.48rem;
+  position: relative;
+  /* слева — от линии справа от сайдбара, справа — до края окна */
+  margin-inline: 3.15rem -0.32rem;
+}
+
+.carousel__viewport {
+  position: relative; /* от него считаются offsetLeft карточек в script.js */
+  padding-block: 0.6rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  cursor: grab;
+}
+
+.carousel__viewport::-webkit-scrollbar { display: none; }
+
+.carousel__viewport:focus-visible {
+  outline: 0.03rem solid var(--accent-light);
+  outline-offset: -0.03rem;
+}
+
+/* пока тянут мышью, привязка к карточкам выключена — иначе дёргала бы ленту под курсором */
+.carousel__viewport.is-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+
+.carousel__track {
+  display: flex;
+  gap: var(--card-gap);
+  width: max-content;
+  /* полокна минус полкарточки с обеих сторон — чтобы и крайние вставали по центру */
+  padding-inline: calc(50% - var(--card-w) / 2);
+}
+
+/* always — один свайп листает ровно одну карточку, а не проскакивает несколько:
+   так лента не улетает за копии, которыми script.js делает её бесконечной */
+.carousel__track > * { flex: none; scroll-snap-align: center; scroll-snap-stop: always; }
+
+/* Стрелки стоят в зазорах у центральной карточки: так обе всегда на виду,
+   в том числе левая, которую иначе закрыл бы сайдбар. Подложка и размытие —
+   как у меню, обводка — цветом бейджа. */
+.carousel__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--arrow);
+  height: var(--arrow);
+  padding: 0;
+  border: 0.02rem solid var(--accent-light);
+  border-radius: 50%;
+  background: var(--sidebar-bg);
+  -webkit-backdrop-filter: blur(0.05rem);
+  backdrop-filter: blur(0.05rem);
+  color: var(--text);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.carousel__arrow--prev { left: calc(50% - var(--card-w) / 2 - var(--card-gap) / 2); }
+.carousel__arrow--next { left: calc(50% + var(--card-w) / 2 + var(--card-gap) / 2); }
+
+.carousel__arrow svg {
+  width: 50%;
+  height: 50%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.carousel__arrow:hover { box-shadow: 0 0 0.2rem 0 var(--accent-light); }
+
+.carousel__arrow:focus-visible {
+  outline: 0.02rem solid var(--text);
+  outline-offset: 0.04rem;
+}
+
+/* ------------------- Крупные визуалы отдельных разделов ------------------- */
+
+.speaker-visual {
+  position: absolute;
+  left: 4.72rem;
+  bottom: 0;
+  width: 9.12rem;
+  height: 6.15rem;
+  overflow: hidden;
+}
+
+.speaker-visual img {
+  position: absolute;
+  left: -6.97%;
+  top: -2.72%;
+  width: 107.91%;
+  height: 107.28%;
+  max-width: none;
+}
+
+/* Бейдж 664x605. В макете заливка в режиме CROP: по ширине картинка взята
+   целиком, по высоте — полоса 8,5%..89,5%, отсюда cover и сдвиг по вертикали. */
+/* Maree: фрейм визуала 783x615, картинка вписана внутрь целиком —
+   в макете у неё свои пропорции и остаются поля по бокам. */
+.maree-visual {
+  width: 7.83rem;
+  height: 6.15rem;
+  object-fit: contain;
+}
+
+/* На десктопе карточка вклеена в фоновую обложку сцены — отдельную не показываем */
+@media (min-width: 1201px) {
+  .maree-visual-wrap,
+  .oillink-visual-wrap { visibility: hidden; }
+}
+
+/* «Auto»: фото под маской с вырезом и машина в вырезе, собранные в одну
+   картинку с прозрачным фоном (группа 665x523 в макете, по центру колонки). */
+.auto-visual {
+  width: 6.65rem;
+  height: 5.23rem;
+  object-fit: contain;
+}
+
+.zaryad-badge {
+  width: 6.64rem;
+  height: 6.05rem;
+  object-fit: cover;
+  object-position: 50% 44.7%;
+}
+
+/* В макете заливка FILL — картинка кадрируется по высоте, а не вписывается. */
+.period-phone { width: 8.86rem; height: 5.9rem; object-fit: cover; }
+
+/* ------------------------------ Мокап ноутбука ------------------------------ */
+
+.laptop {
+  position: relative;
+  width: 100%;
+  height: 6.15rem;
+}
+
+.laptop--photobank { --kb-left: -0.45rem; --kb-width: 10.36rem; --kb-height: 0.21rem; --kb-top: 5.38rem; --back-left: 0.01rem; --back-top: 0; --back-w: 9.47rem; --back-h: 5.39rem; }
+.laptop--fm        { --kb-left: -0.32rem; --kb-width: 10.10rem; --kb-height: 0.25rem;    --kb-top: 5.38rem; --back-left: 0.02rem; --back-top: 0; --back-w: 9.46rem; --back-h: 5.4rem; }
+
+.laptop__back {
+  position: absolute;
+  left: var(--back-left);
+  top: var(--back-top);
+  width: var(--back-w);
+  height: var(--back-h);
+  background: #d6d6d6;
+  border: 0.01rem solid #ccc;
+  border-radius: 0.22rem 0.22rem 0 0;
+}
+
+.laptop__frame {
+  position: absolute;
+  left: 0.04rem;
+  top: 0.03rem;
+  width: 9.41rem;
+  height: 5.36rem;
+  background: #050505;
+  border-radius: 0.2rem 0.2rem 0 0;
+  box-shadow: 0 0 0.01rem 0.01rem rgba(255, 255, 255, 0.6),
+              inset 0 0 0.05rem 0.03rem rgba(0, 0, 0, 0.1);
+}
+
+.laptop__screen {
+  position: absolute;
+  left: 0.16rem;
+  top: 0.15rem;
+  width: 9.16rem;
+  height: 5.13rem;
+  border-radius: 0.16rem;
+  overflow: hidden;
+}
+
+.laptop__screen img { width: 9.16rem; height: 5.15rem; max-width: none; object-fit: cover; }
+
+.laptop__screen-shadow {
+  position: absolute;
+  left: 0.16rem;
+  top: 0.15rem;
+  width: 9.16rem;
+  height: 5.13rem;
+  border-radius: 0.16rem;
+  box-shadow: inset 0 0 0.04rem 0 rgba(0, 0, 0, 0.24);
+}
+
+.laptop__glow {
+  position: absolute;
+  left: 0.04rem;
+  top: 0.03rem;
+  width: 9.41rem;
+  height: 5.36rem;
+  border-radius: 0.2rem 0.2rem 0 0;
+  background: radial-gradient(ellipse 1.4rem 1.75rem at 0.7rem 0.55rem,
+              rgba(255, 255, 255, 0.24) 15%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0.2;
+  box-shadow: inset 0 0 0.03rem 0.01rem rgba(0, 0, 0, 0.4);
+}
+
+.laptop__keyboard {
+  position: absolute;
+  left: var(--kb-left);
+  top: var(--kb-top);
+  width: var(--kb-width);
+  height: var(--kb-height);
+  border-radius: 0.03rem;
+  overflow: hidden;
+  box-shadow: inset 0 -0.01rem 0.01rem 0 rgba(0, 0, 0, 0.3),
+              inset 0 -0.03rem 0.01rem 0 rgba(255, 255, 255, 0.7);
+}
+
+.laptop__keyboard img { width: 100%; height: 100%; object-fit: cover; }
+
+.laptop__keyboard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(239, 239, 239, 0.2), rgba(219, 219, 219, 0.2));
+}
+
+.laptop__shadow-1 {
+  position: absolute;
+  left: -0.45rem;
+  top: 5.59rem;
+  width: 10.36rem;
+  height: 0.02rem;
+  background: #000;
+  border-radius: 0.18rem;
+  filter: blur(0.08rem);
+}
+
+.laptop__shadow-2 {
+  position: absolute;
+  left: -0.45rem;
+  top: 5.59rem;
+  width: 10.35rem;
+  height: 0.01rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0.18rem;
+  filter: blur(0.02rem);
+}
+
+/* ====================== Появление блоков при прокрутке ====================== */
+
+/* Классы навешивает script.js, поэтому без JavaScript и при системной
+   настройке «уменьшить движение» блоки просто видны — никакого скрытого
+   содержимого, которое некому показать.
+
+   Именно анимация, а не transition: у сцены IntersectionObserver отдаёт
+   первый колбэк раньше, чем браузер успевает отрисовать исходное
+   opacity: 0. Переход в такой ситуации не запускается вовсе — переходить
+   не от чего, — а анимация всегда играет от своего первого кадра. */
+/* Предварительное скрытие — до того, как script.js разметит блоки.
+
+   Без него браузер успевает отрисовать кадр с готовой раскладкой раньше,
+   чем отработает скрипт (first-contentful-paint ~168 мс против ~174 мс),
+   и содержимое видно кадр, пропадает и появляется заново каскадом —
+   при переходе между страницами это читается как подёргивание.
+
+   Правило само себя снимает через секунду: если скрипт не отработает
+   (отключён JS, не доехал файл), содержимое всё равно покажется. А как
+   только скрипт навесит .reveal, селектор перестаёт совпадать, и элемент
+   переходит под управление анимаций ниже. */
+.section > *:not(.reveal) {
+  animation: reveal-failsafe 0.3s 1s both;
+}
+
+/* Скрипт отработал — страховка больше не нужна. Класс ставится и тогда,
+   когда анимация выключена: иначе при системном «уменьшить движение»
+   содержимое ждало бы секунду впустую. */
+.reveal-armed .section > *:not(.reveal) { animation: none; }
+
+@keyframes reveal-failsafe {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.reveal { opacity: 0; }
+
+.reveal.is-visible {
+  animation: reveal-rise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes reveal-rise {
+  from { opacity: 0; transform: translateY(0.32rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Крупный визуал сцены только проявляется: он прижат к нижней грани,
+   и стартовый сдвиг вниз вылезал бы за скруглённый край панели. */
+.reveal--fade.is-visible { animation-name: reveal-fade; }
+
+@keyframes reveal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Мелкие круглые элементы — кружки палитры и иконки скилов: у объекта 48px
+   полная дистанция 32px читалась бы прыжком, поэтому половина. */
+.reveal--soft.is-visible { animation-name: reveal-soft; }
+
+@keyframes reveal-soft {
+  from { opacity: 0; transform: translateY(0.16rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ============================== Адаптив ============================== */
+
+@media (max-width: 1200px) {
+  html { font-size: 16px; }
+
+  /* Интерлиньяж в пикселях, а не множителем: в макете значения целые,
+     а 16 x 1.55 давало 24.8 и уводило текст с сетки. */
+  body { font-size: 16px; line-height: 24px; }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: auto;
+    padding: 12px 12px;
+    flex-direction: row;
+    align-items: center;
+    /* знак и кнопка меню разъезжаются по краям шапки, как в макете;
+       список .nav выведен из потока и на раскладку шапки не влияет */
+    justify-content: space-between;
+    gap: 16px;
+    /* липкая шапка отделяется от контента волоском — это не та inner shadow,
+       что была в макете, а граница мобильной раскладки */
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+    /* Фон и размытие шапки переехали на подложку ниже. Причина: элемент
+       с backdrop-filter становится корнем размытия для всего, что внутри,
+       и вложенное меню размывало бы уже не страницу, а пустоту внутри
+       шапки — контент под меню оставался резким. */
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* Подложка шапки: та же заливка и размытие 5px, что в макете bar. */
+  .sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--sidebar-bg);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+  }
+
+  /* Знак и кнопка — поверх подложки */
+  .sidebar__logo,
+  .sidebar__toggle { position: relative; z-index: 1; }
+
+  /* Знак слева, кнопка меню справа — как в компоненте Sidebar / 390.
+     Размер вровень с кнопкой, 40. */
+  /* Знак обёрнут в квадрат 40x40 — такой же, как у кнопки меню
+     (компонент Sidebar / 390: обе рамки на y=12, по краям отступ 12).
+     Сам знак 24x24 стоит по центру обёртки, а её размер заодно даёт
+     зоне нажатия те же 40 точек, что и у бургера. */
+  .sidebar__logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: var(--text);
+    transition: color 0.2s ease;
+  }
+
+  .sidebar__logo .logo-mark { display: block; width: 24px; height: 24px; }
+
+  a.sidebar__logo:hover,
+  a.sidebar__logo:focus-visible { color: var(--accent-light); }
+
+  a.sidebar__logo:focus-visible {
+    outline: 2px solid var(--accent-light);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
+
+  .sidebar__toggle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    padding: 0 8px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .sidebar__toggle span { display: block; height: 2px; background: #fff; border-radius: 2px; }
+
+  .nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    flex-direction: column;
+    /* шаг между пунктами 50 = строка 22 + зазор 28 */
+    gap: 28px;
+    padding: 52px 20px;
+    align-items: center;
+    /* Из макета: заливка тем же токеном, что у сайдбара — rgba(20,117,139,0.4),
+       поверх неё размытие 5px, поэтому сквозь меню просматривается страница.
+       Непрозрачный #10333c этот эффект глушил. */
+    background: var(--sidebar-bg);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+  }
+  .nav[hidden] { display: none; }
+
+  /* В выпадающем меню ширины хватает: nowrap схлопывает перенос
+     из подписи в пробел, и двухстрочные пункты идут в одну строку. */
+  .nav__item { font-size: 16px; line-height: 22px; white-space: nowrap; }
+  /* размер выравниваем под выпадающий список, текущую страницу
+     по-прежнему выделяет начертание, как в компоненте */
+  .nav__item.is-active { font-size: 16px; font-weight: 800; color: var(--text); }
+  .nav__item:focus-visible { outline-width: 2px; outline-offset: 4px; }
+
+  .page { padding: 20px; gap: 40px; }
+  .section { gap: 24px; scroll-margin-top: 76px; }
+
+  /* Макет 390 выносит заголовок кейса НАД панель: он лежит на фоне страницы,
+     а панель начинается под ним. В разметке заголовок сидит внутри .stage, и
+     трогать её ради одного брейкпоинта не хочется — десктоп выверен по пикселям.
+     Поэтому обёртки растворяются (display: contents), их дети становятся
+     строками сетки .stage, а фон панели рисует псевдоэлемент, накрывающий
+     только строки бейджа и тела.
+
+     Внутренние отступы панели (20/16) заданы margin'ами самих детей: в гриде
+     margin входит в строку, и подложка растягивается ровно по ним. Зазор 16
+     до панели вынесен в margin-bottom заголовка — он лежит в его строке,
+     то есть снаружи подложки. */
+  .stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 0;
+    height: auto;
+    min-height: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .stage__notch { display: none; }
+  .stage::before { display: none; }
+
+  .stage__content { display: contents; }
+  .stage__content--clip { overflow: visible; }
+
+  .stage__head { display: contents; }
+
+  .stage__title {
+    grid-row: 1;
+    grid-column: 1;
+    width: auto;
+    height: auto;
+    margin-bottom: 16px;
+    font-size: 21px;
+    line-height: 25px;
+    white-space: normal;
+  }
+
+  /* подложка панели — от бейджа до низа тела */
+  .stage::after {
+    content: "";
+    grid-row: 2 / 4;
+    grid-column: 1;
+    background-image: var(--stage-fill);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    border-radius: 24px;
+    z-index: 0;
+  }
+
+  .badge {
+    grid-row: 2;
+    grid-column: 1;
+    position: relative;
+    z-index: 1;
+    /* по макету бейдж растянут во всю ширину панели */
+    width: auto;
+    max-width: none;
+    height: auto;
+    /* 20 сверху и 16 по бокам — это внутренние отступы панели */
+    margin: 20px 16px 0;
+    padding: 14px 24px;
+    border-width: 2px;
+    border-radius: 40px;
+    box-shadow: 0 0 20px 0 var(--accent-light);
+    font-size: 14px;
+    line-height: 18px;
+    white-space: normal;
+  }
+
+  .stage__body {
+    grid-row: 3;
+    grid-column: 1;
+    position: relative;
+    z-index: 1;
+    flex-direction: column;
+    width: auto;
+    height: auto;
+    /* 32 от бейджа, 20 до низа панели, 16 по бокам */
+    margin: 32px 16px 20px;
+    gap: 32px;
+    overflow: visible;
+  }
+
+  /* в макете 390 визуал идёт сразу за бейджем, текстовые блоки — под ним */
+  .col-visual, .speaker-visual { order: -1; }
+
+  /* фоновое видео — на месте подложки панели, под бейджем и телом;
+     затемнение держит читаемость текста поверх кадра */
+  .stage--media::after { display: none; }
+  .stage__media {
+    position: relative;
+    inset: auto;
+    grid-row: 2 / 4;
+    grid-column: 1;
+    border-radius: 24px;
+    z-index: 0;
+  }
+  .stage__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(6, 6, 6, 0.55);
+  }
+  .stage__media video { position: absolute; inset: 0; }
+  /* мобильный вариант фоновой картинки (Maree: фон без вшитой карточки) */
+  .stage__media--alt { background-image: var(--media-mobile) !important; }
+
+  /* единая высота визуала; фото на «обо мне» живёт по своим правилам —
+     у него маска и собственные пропорции, поэтому оно сюда не включено */
+  .zaryad-badge,
+  .period-phone,
+  .maree-visual,
+  .auto-visual,
+  .speaker-visual img { height: 200px; object-fit: contain; }
+  .stage__body--clip { overflow: visible; }
+  .stage__content--flush .stage__body { min-height: 0; }
+
+  .col-text, .col-visual, .block, .panel > .block, .cols-2 > .col { width: 100% !important; }
+  .col-text { gap: 28px; }
+  .col-text p, .col-text div, .bullets li { width: auto !important; }
+  .block { gap: 12px; }
+
+  .label { font-size: 16px; line-height: 22px; }
+  /* .lead и .bullets--loose своих правил больше не имеют — наследуют 24 от body */
+  .bullets { padding-left: 22px; }
+
+  .palette, .skills { gap: 12px; flex-wrap: wrap; }
+  .swatch, .skill { width: 40px; height: 40px; }
+  /* кружок меньше — ореол тоже поджимаем, иначе иконки сливаются */
+  .skill { box-shadow: 0 0 12px var(--glow); }
+  .skill__leaf { width: 40px; height: 40px; left: 0; top: 0; }
+  .skill__leaf--ae { width: 41px; }
+  .skill__leaf--sq, .skill__leaf--big { width: 42px; height: 42px; left: -1px; top: -1px; }
+
+  .photo { width: 100%; max-width: 420px; height: auto; aspect-ratio: 598 / 540; }
+  .photo__frame { -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+  .photo__img { position: absolute; inset: 0; width: 100%; height: 100%; left: 0; top: 0; }
+  /* Кружок телеграма должен попасть в вырез маски, а маска тянется вместе
+     с фото. Поэтому позиция и размер — в тех же долях, что в макете
+     доли из макета, поэтому круг попадает в вырез маски при любой ширине.
+     Пикселями задан только кегль подписи: в rem на узком экране он не
+     масштабируется вместе с фото. */
+  .photo__hint { border-width: 2px; }
+  #showreel { scroll-margin-top: 76px; } /* под липкой шапкой */
+  .photo__hint-text { font-size: 10px; line-height: 10px; }
+
+  .row { flex-direction: column; gap: 24px; }
+  /* в колонку flex-basis: 0 обнулил бы высоту */
+  .media--fill { flex: none; }
+  .row--inset { padding-left: 0; }
+  .panel--full { margin-left: 0; }
+
+  .panel {
+    width: 100% !important;
+    padding: 28px 24px;
+    border-radius: 24px;
+    gap: 24px;
+  }
+  /* без подложки внутренние отступы не нужны: текст встаёт по краю
+     страницы, как заголовок и карточки (двойной класс — чтобы перебить
+     и правило .panel из брейкпоинта 640) */
+  .panel.panel--plain { padding: 0; }
+
+  .cols-2 { flex-direction: column; width: 100%; gap: 28px; }
+  .cols-2 > .col { gap: 20px; }
+
+  .media { width: 100% !important; height: auto !important; border-radius: 24px; }
+  .media img, .media video { height: auto; }
+  .media--stretch img { position: static; }
+  .media--video video { aspect-ratio: var(--media-ratio, 4 / 5); }
+  /* высоты у карточки на мобилке нет — берём её из пропорции видео 16:9 */
+  .media--embed { aspect-ratio: 16 / 9; }
+  .embed__cover:focus-visible { outline-width: 3px; outline-offset: -3px; }
+  /* на узком экране 1rem = 16px, поэтому размеры значка заданы пикселями */
+  .embed__play { width: 56px; height: 56px; border-width: 2px; -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  /* карточка почти во всю ширину экрана, соседние выглядывают по краям */
+  .carousel { --card-w: 78vw; --card-gap: 16px; --arrow: 40px; margin-inline: -20px; }
+  .carousel__viewport { padding-block: 0; }
+  .carousel .media { width: var(--card-w) !important; }
+  .carousel__arrow { border-width: 2px; }
+  .carousel__arrow:hover { box-shadow: none; }
+  .grid .media { width: 100% !important; }
+
+  .speaker-visual { position: static; width: 100%; height: auto; }
+  .speaker-visual img { position: static; width: 100%; left: 0; top: 0; }
+
+  .zaryad-badge, .period-phone, .maree-visual, .auto-visual { width: 100%; }
+
+  /* Мокап ноутбука показывается и на узких экранах — в UI kit для 390
+     появился компонент Laptop (экраны «фотобанк» и «фм сервис»).
+
+     Десктопная геометрия задана в rem от корня, поэтому на мобилке она бы
+     дала мокап втрое мельче нужного. Переопределяем слои в процентах от
+     контейнера: сам он держит пропорцию макета (326 x 177), а слои внутри
+     повторяют раскладку компонента — подложка 298x170 со сдвигом 14 по
+     горизонтали, рамка на 1 внутрь, экран на 5, клавиатура во всю ширину
+     под корпусом. Так мокап масштабируется вместе с панелью. */
+  .laptop {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 326 / 177;
+  }
+
+  .laptop__back {
+    left: 4.294%;
+    top: 0;
+    width: 91.411%;
+    height: 96.045%;
+    border-width: 1px;
+    border-radius: 7px 7px 0 0;
+  }
+
+  .laptop__frame,
+  .laptop__glow {
+    left: 4.601%;
+    top: 0.565%;
+    width: 90.798%;
+    height: 95.48%;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .laptop__frame {
+    box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.6),
+                inset 0 0 5px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .laptop__glow {
+    /* блик пересчитан в пропорции мокапа: на десктопе он занимал примерно
+       те же доли корпуса */
+    background: radial-gradient(ellipse 44px 55px at 22px 17px,
+                rgba(255, 255, 255, 0.24) 15%, rgba(255, 255, 255, 0) 100%);
+    box-shadow: inset 0 0 3px 1px rgba(0, 0, 0, 0.4);
+  }
+
+  .laptop__screen,
+  .laptop__screen-shadow {
+    position: absolute;
+    left: 5.828%;
+    top: 2.825%;
+    width: 88.344%;
+    height: 91.525%;
+    border-radius: 5px;
+    border: 0;
+  }
+
+  .laptop__screen { overflow: hidden; }
+  .laptop__screen-shadow { box-shadow: inset 0 0 4px 0 rgba(0, 0, 0, 0.24); }
+
+  /* картинка заполняет экран целиком */
+  .laptop__screen img { width: 100%; height: 100%; object-fit: cover; }
+
+  .laptop__keyboard {
+    left: 0;
+    top: 96.045%;
+    width: 100%;
+    height: 3.39%;
+    border-radius: 1px;
+    box-shadow: inset 0 -1px 1px 0 rgba(0, 0, 0, 0.3),
+                inset 0 -3px 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  /* Подкорпусные тени: в макете это волоски 0.42 — на экране телефона
+     тоньше пикселя не нарисовать, поэтому по 1px. */
+  .laptop__shadow-1,
+  .laptop__shadow-2 {
+    left: 0;
+    top: 99.6%;
+    width: 100%;
+    height: 1px;
+    border-radius: 2px;
+    filter: blur(1px);
+  }
+  .laptop__shadow-2 { filter: blur(0.5px); }
+}
+
+@media (max-width: 640px) {
+  /* 16 по краям страницы, 24 между секциями — по макету 390 */
+  .page { padding: 16px; gap: 24px; }
+  .stage__content, .panel { padding: 20px 16px; }
+  .grid, .grid--3 { grid-template-columns: 1fr; }
+  .carousel { margin-inline: -16px; }
+  /* размеры заголовка и бейджа заданы выше, в мобильной типографике */
+  .badge { padding: 12px 18px; }
+  .palette, .skills { gap: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
